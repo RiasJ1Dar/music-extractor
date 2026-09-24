@@ -1,0 +1,18 @@
+# environment / tools created by the installer
+.venv/
+tools/
+install.log
+__pycache__/
+*.pyc
+
+# build output
+dist/
+
+# local working data (audio, caches, experiments)
+work/
+output/
+*.wav
+*.flac
+*.mp3
+*.mp4
+*.npy
