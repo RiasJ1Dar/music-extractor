@@ -73,6 +73,79 @@
    частотно-часовій клітинці. Паузи-«стопи», що є в самій композиції, зберігаються.
 5. Поруч із треком пишеться звіт: звідки взято кожен шматок і де міг лишитися голос.
 
+## Вхідні й вихідні файли
+
+Вхід: `.mp4 .mkv .mov .webm .avi .m4v .mp3 .wav .flac .m4a .aac .ogg .opus .wma`.
+
+Результат пишеться у вибрану папку у форматі WAV 24-bit або FLAC. Наявні файли не
+перезаписуються: до нового імені додається ` (2)`, ` (3)` тощо.
+
+| Режим | Файли |
+|---|---|
+| Мінус / стеми | `<ім'я>_instrumental.wav`, зі стемами ще й `<ім'я>_stems\` з `vocals`, `drums`, `bass`, `other` |
+| Відновлення з кількох джерел | `clean_track.wav` + звіт `clean_track_report.md` |
+
+| Що | Де |
+|---|---|
+| Програма (установник) | `%LOCALAPPDATA%\Programs\Music Extractor` |
+| Лог установки | `install.log` у папці програми |
+| Моделі | `%LOCALAPPDATA%\MusicExtractor\models` |
+| Кеш розділених стемів і карт збігів | `%LOCALAPPDATA%\MusicExtractor\cache`, або шлях зі змінної середовища `MUSICX_CACHE` |
+
+Кеш робить повторну обробку тих самих файлів миттєвою. Очистити його можна кнопкою «Очистити кеш»,
+моделі при цьому лишаються.
+
+## Командний рядок
+
+Основна робота йде через вікно програми. Ці команди запускаються з папки програми (або з клону
+репозиторію) Python-ом із `.venv`.
+
+**Запуск програми з файлами у списку:**
+
+```
+.venv\Scripts\python -m musicx.gui.app [ФАЙЛ ...]
+```
+
+Шляхи, що існують, одразу додаються до списку файлів. Режим, модель і решту налаштувань вибирайте у вікні.
+
+**Завантаження моделей наперед:**
+
+```
+.venv\Scripts\python -m musicx.core.models --download default   # моделі за замовчуванням
+.venv\Scripts\python -m musicx.core.models --download all       # усі моделі (див. docs/MODELS.md)
+```
+
+| Прапорець | Значення |
+|---|---|
+| `--download default` | моделі для мінусу й відновлення за замовчуванням, а також `htdemucs_ft` для стемів |
+| `--download all` | усі 11 моделей |
+
+**Встановлення залежностей** (`installer\deps.ps1`, його запускає установник, можна й вручну;
+повторний запуск пропускає вже зроблені кроки):
+
+```
+powershell -ExecutionPolicy Bypass -File installer\deps.ps1 [-Cpu] [-AllModels] [-InstallDownloader] [-NoShortcut] [-FromSetup]
+```
+
+| Прапорець | Значення |
+|---|---|
+| `-Cpu` | ставити PyTorch для процесора, навіть якщо є відеокарта NVIDIA |
+| `-AllModels` | завантажити всі моделі одразу (інакше решта завантажується при першому використанні) |
+| `-InstallDownloader` | встановити [Downloader](https://github.com/RiasJ1Dar/downloader), якщо його немає, і качати ним усі великі файли |
+| `-NoShortcut` | не створювати ярлик на робочому столі |
+| `-FromSetup` | службовий: вивід прогресу для вікна установника, без ярлика |
+
+**Тихе встановлення.** Установник зроблений на Inno Setup, тож приймає його стандартні ключі. Додаткові
+завдання: `desktopicon` (ярлик), `cpu` (PyTorch для процесора), `allmodels` (усі моделі),
+`downloader` (встановити Downloader):
+
+```
+MusicExtractor-Setup-1.1.0.exe /VERYSILENT /TASKS="desktopicon,allmodels"
+```
+
+**Службова команда** `python -m musicx.core.uvr_run MODEL_FILE INPUT_WAV OUT_DIR MODELS_DIR` запускає одну
+модель RoFormer / MDX в окремому процесі. Її викликає сама програма, вручну вона не потрібна.
+
 ## Розробка
 
 ```
@@ -88,8 +161,15 @@ powershell -ExecutionPolicy Bypass -File installer\deps.ps1   # .venv + усі �
 ISCC installer\MusicExtractor.iss      # -> dist\MusicExtractor-Setup-<версія>.exe
 ```
 
-Тести: `tests/regress_rebuild.py`, `tests/test_minus.py`, `tests/test_gui.py`
-(потребують власних тестових файлів — шляхи на початку кожного тесту).
+Версію установника можна задати під час збірки: `ISCC /DAppVersion=1.2.0 installer\MusicExtractor.iss`.
+
+Тести потребують власних тестових файлів (шляхи на початку кожного тесту):
+
+```
+.venv\Scripts\python tests\test_minus.py [ключ]            # мінус; ключ моделі з docs/MODELS.md, типово htdemucs_ft
+.venv\Scripts\python tests\regress_rebuild.py [cached|fresh] # відновлення проти еталону; cached — з готових стемів і карти
+.venv\Scripts\python tests\test_gui.py                      # вікно програми, мінус одного файлу
+```
 
 ## Ліцензія
 
@@ -115,3 +195,16 @@ Download `MusicExtractor-Setup-<version>.exe` from
 [Releases](https://github.com/RiasJ1Dar/music-extractor/releases). The setup downloads ffmpeg,
 Python 3.11, PyTorch (CUDA or CPU), Demucs, audio-separator and the models (~5 GB) and resumes
 if interrupted. The interface is in Ukrainian; the installer is available in Ukrainian and English.
+
+Command line (run from the app folder):
+
+```
+.venv\Scripts\python -m musicx.gui.app [FILE ...]                 # open the app with these files listed
+.venv\Scripts\python -m musicx.core.models --download default|all  # fetch models in advance
+powershell -ExecutionPolicy Bypass -File installer\deps.ps1 [-Cpu] [-AllModels] [-InstallDownloader] [-NoShortcut]
+MusicExtractor-Setup-1.1.0.exe /VERYSILENT /TASKS="desktopicon,cpu,allmodels,downloader"
+```
+
+Output: `<name>_instrumental.wav` (+ `<name>_stems\`) or `clean_track.wav` + `clean_track_report.md`,
+WAV 24-bit or FLAC. Models live in `%LOCALAPPDATA%\MusicExtractor\models`, the cache in
+`%LOCALAPPDATA%\MusicExtractor\cache` (override with `MUSICX_CACHE`).
