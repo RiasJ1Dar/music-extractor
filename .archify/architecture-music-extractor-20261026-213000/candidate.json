@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Music Extractor: мінус, стеми й склейка треку",
+    "output": ".archify/architecture-music-extractor-20261026-213000/music-extractor.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/RiasJ1Dar/music-extractor.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "c1f9748e325bdff63695ff145fdb7ea4ce90f690"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [40, 48],
+    "cols": 5,
+    "cellW": 125,
+    "cellH": 70,
+    "gapX": 70,
+    "gapY": 90
+  },
+  "components": [
+    {
+      "id": "user", "type": "external", "label": "Користувач", "sublabel": "вибір файлів",
+      "row": 0, "col": 0,
+      "sources": [{ "path": "README.md", "line": 7, "end_line": 14, "label": "дві можливості" }]
+    },
+    {
+      "id": "gui", "type": "frontend", "label": "GUI PySide6", "sublabel": "робота в QThread",
+      "row": 0, "col": 1,
+      "sources": [{ "path": "musicx/gui/app.py", "line": 1, "label": "UI не блокується" }]
+    },
+    {
+      "id": "jobs", "type": "backend", "label": "jobs", "sublabel": "дві задачі",
+      "row": 0, "col": 2,
+      "sources": [{ "path": "musicx/core/jobs.py", "line": 1, "end_line": 11 }]
+    },
+    {
+      "id": "separate", "type": "backend", "label": "separate", "sublabel": "ffmpeg і модель",
+      "row": 0, "col": 3,
+      "sources": [
+        { "path": "musicx/core/separate.py", "line": 1, "end_line": 6, "label": "кеш за файлом" },
+        { "path": "musicx/core/separate.py", "line": 17, "end_line": 25, "label": "стеми і ключ" }
+      ]
+    },
+    {
+      "id": "models", "type": "backend", "label": "models", "sublabel": "пресети моделей",
+      "row": 0, "col": 4,
+      "sources": [{ "path": "musicx/core/models.py", "line": 1, "end_line": 9 }]
+    },
+    {
+      "id": "rebuild", "type": "backend", "label": "rebuild", "sublabel": "склейка з джерел",
+      "row": 1, "col": 1,
+      "sources": [
+        { "path": "musicx/core/rebuild.py", "line": 1, "end_line": 12, "label": "кореляція і скелет" },
+        { "path": "musicx/core/jobs.py", "line": 10, "label": "вхід задачі" }
+      ]
+    },
+    {
+      "id": "cache", "type": "database", "label": "кеш", "sublabel": "LOCALAPPDATA",
+      "row": 1, "col": 2,
+      "sources": [{ "path": "musicx/core/common.py", "line": 9, "end_line": 10, "label": "CACHE_ROOT" }]
+    },
+    {
+      "id": "ffmpeg", "type": "external", "label": "ffmpeg", "sublabel": "видобуток аудіо",
+      "row": 1, "col": 3,
+      "sources": [{ "path": "musicx/core/common.py", "line": 1, "label": "пошук інструмента" }]
+    },
+    {
+      "id": "dl", "type": "external", "label": "Downloader", "sublabel": "сегментовано",
+      "row": 1, "col": 4,
+      "sources": [{ "path": "musicx/core/models.py", "line": 3, "end_line": 6, "label": "dl get і запас" }]
+    },
+    {
+      "id": "report", "type": "database", "label": "report.md", "sublabel": "звіт склейки",
+      "row": 2, "col": 1,
+      "sources": [{ "path": "musicx/core/report.py", "line": 1, "end_line": 12 }]
+    }
+  ],
+  "connections": [
+    { "id": "user-gui", "from": "user", "to": "gui", "variant": "emphasis" },
+    { "id": "gui-jobs", "from": "gui", "to": "jobs", "label": "задача", "variant": "emphasis" },
+    { "id": "jobs-sep", "from": "jobs", "to": "separate", "label": "стеми", "variant": "emphasis" },
+    { "id": "sep-models", "from": "separate", "to": "models", "label": "пресет" },
+    { "id": "models-dl", "from": "models", "to": "dl", "label": "dl get", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "sep-ffmpeg", "from": "separate", "to": "ffmpeg", "label": "аудіо", "fromSide": "bottom", "toSide": "top" },
+    { "id": "sep-cache", "from": "separate", "to": "cache", "label": "кеш" },
+    { "id": "jobs-rebuild", "from": "jobs", "to": "rebuild", "label": "склейка", "variant": "emphasis" },
+    { "id": "rebuild-report", "from": "rebuild", "to": "report", "label": "звіт", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Дві задачі",
+      "items": [
+        "Мінус або стеми для одного файлу",
+        "Один чистий трек, зібраний із кількох записів, де він звучить",
+        "Склейка теж починається з розділення: Demucs htdemucs_ft дає музику"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Як обирається фрагмент",
+      "items": [
+        "Найдовше джерело стає скелетом таймлайну; його паузи зберігаються",
+        "Крок 0.25 с: нормалізована кроскореляція у вікні 2 с, уточнення до семпла",
+        "Оцінка враховує енергію голосу поруч, відхилення спектра і штраф кодека",
+        "Де голос є в усіх копіях, копії зливаються: музика однакова, голос у різних місцях"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Моделі й залежності",
+      "items": [
+        "Кеш за файлом і пресетом, тож повторний прогін не рахує все заново",
+        "Моделі качає Downloader; без нього працює вбудоване докачування",
+        "Файл вважається готовим лише з <file>.ok і без залишку .dlpart",
+        "Пресет — одна модель або ансамбль; ансамбль усереднює результати"
+      ]
+    }
+  ]
+}
